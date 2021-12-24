@@ -10,6 +10,7 @@ import (
 	"example.com/model"
 	"github.com/go-sql-driver/mysql"
 	"github.com/labstack/echo/v4"
+  "golang.org/x/crypto/bcrypt"
 )
 
 var db *sql.DB
@@ -38,7 +39,7 @@ func main() {
 	fmt.Println("Connected!")
 	e := echo.New()
 	e.GET("/users", getUser)
-	e.POST("/users", addUser)
+	e.POST("/users", register)
 	e.Logger.Fatal(e.Start(":8080"))
 }
 
@@ -46,27 +47,19 @@ func getUser(c echo.Context) error {
 	return c.String(http.StatusOK, "Hello world")
 }
 
-func addUser(c echo.Context) error {
-	// u := make(map[string]string)
-	// if err := json.NewDecoder(c.Request().Body).Decode(&u); err != nil {
-	// 	return err
-	// }
-
+func register(c echo.Context) error {
 	u := new(model.User)
 	if err := c.Bind(u); err != nil {
 		return err
 	}
-	// user := model.User{
-	// 	Name:     u["name"],
-	// 	Email:    u["email"],
-	// 	Password: u["password"],
-	// }
+  
+  password, _ := bcrypt.GenerateFromPassword([]byte(u.Password), 14)
 
-	_, err := db.Exec("INSERT INTO users (name, email, password) values (?, ?, ?)", u.Name, u.Email, u.Password)
+	_, err := db.Exec("INSERT INTO users (name, email, password) values (?, ?, ?)", u.Name, u.Email, password)
 
 	if err != nil {
 		return err
 	}
-
+  
 	return c.String(http.StatusOK, "Success")
 }
