@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"database/sql"
@@ -14,14 +14,14 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-sql-driver/mysql"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 	"golang.org/x/crypto/bcrypt"
 )
 
-var db *sql.DB
 var secret string = "secret"
 
-func main() {
+var Db *sql.DB
+
+func ConnectToDb() {
 
 	cfg := mysql.Config{
 		User:   os.Getenv("DBUSER"),
@@ -32,35 +32,27 @@ func main() {
 	}
 
 	var err error
-	db, err = sql.Open("mysql", cfg.FormatDSN())
+	Db, err = sql.Open("mysql", cfg.FormatDSN())
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	pingErr := db.Ping()
+	pingErr := Db.Ping()
 	if pingErr != nil {
 		log.Fatal(pingErr)
 	}
 
 	fmt.Println("Connected!")
-	e := echo.New()
-
-  e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-    AllowCredentials: true,
-  }))
-	e.GET("/users", getUser)
-	e.POST("/users", register)
-	e.Logger.Fatal(e.Start(":8080"))
 }
 
-func getUser(c echo.Context) error {
+func GetUser(c echo.Context) error {
   user := make(map[string]string)
 
   if err := json.NewDecoder(c.Request().Body).Decode(&user); err != nil {
     return err
   }
 
-  row := db.QueryRow("SELECT * from users where email = ?", user["email"])
+  row := Db.QueryRow("SELECT * from users where email = ?", user["email"])
 
   entry := new(model.User)
   if err := row.Scan(&entry.Id, &entry.Name, &entry.Email, &entry.Password); err != nil {
@@ -98,7 +90,7 @@ func getUser(c echo.Context) error {
   })
 }
 
-func register(c echo.Context) error {
+func Register(c echo.Context) error {
 	u := make(map[string]string)  
 	if err := json.NewDecoder(c.Request().Body).Decode(&u); err != nil {
 		return err
@@ -106,7 +98,7 @@ func register(c echo.Context) error {
   
   password, _ := bcrypt.GenerateFromPassword([]byte(u["password"]), 14)
 
-	_, err := db.Exec("INSERT INTO users (name, email, password) values (?, ?, ?)", u["name"], u["email"], password)
+	_, err := Db.Exec("INSERT INTO users (name, email, password) values (?, ?, ?)", u["name"], u["email"], password)
 
 	if err != nil {
 		return err
