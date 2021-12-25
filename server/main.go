@@ -7,14 +7,19 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
+	"time"
 
 	"example.com/model"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/go-sql-driver/mysql"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"golang.org/x/crypto/bcrypt"
 )
 
 var db *sql.DB
+var secret string = "secret"
 
 func main() {
 
@@ -39,6 +44,10 @@ func main() {
 
 	fmt.Println("Connected!")
 	e := echo.New()
+
+  e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+    AllowCredentials: true,
+  }))
 	e.GET("/users", getUser)
 	e.POST("/users", register)
 	e.Logger.Fatal(e.Start(":8080"))
@@ -63,13 +72,34 @@ func getUser(c echo.Context) error {
       "message": "incorrect password",
     })
   }
+
+  claims := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.StandardClaims {
+    Issuer: strconv.Itoa(int(entry.Id)),
+    ExpiresAt: time.Now().Add(time.Hour * 24).Unix(),
+  })
+
+  token, err := claims.SignedString([]byte(secret))
+  if err != nil {
+    return c.JSON(http.StatusInternalServerError, echo.Map {
+      "message": "Could not login",
+    })
+  }
+
+  cookie := http.Cookie {
+    Name: "jwt",
+    Value: token,
+    Expires: time.Now().Add(time.Hour * 24),
+    HttpOnly: true,
+  }
+
+  c.SetCookie(&cookie)
   return c.JSON(http.StatusOK, echo.Map {
-    "name": entry.Name,
+    "message": "success",
   })
 }
 
 func register(c echo.Context) error {
-	u := make(map[string]string) 
+	u := make(map[string]string)  
 	if err := json.NewDecoder(c.Request().Body).Decode(&u); err != nil {
 		return err
 	}
