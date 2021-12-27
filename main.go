@@ -20,8 +20,9 @@ func main() {
   e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
     AllowCredentials: true,
   }))
-	e.GET("/users", server.GetUser)
+	e.GET("/login", server.GetUser)
 	e.POST("/users", server.Register)
+    e.GET("/users", server.USER)
 	e.Logger.Fatal(e.Start(":8080"))
 }
 
