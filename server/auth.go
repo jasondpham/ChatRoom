@@ -110,7 +110,9 @@ func Register(c echo.Context) error {
 func USER(c echo.Context) error {
 	cookie, err := c.Cookie("jwt")
 	if err != nil {
-		return err
+		return c.JSON(http.StatusUnauthorized, echo.Map{
+			"message": "unauthenticated",
+		})
 	}
 	token, err := jwt.ParseWithClaims(cookie.Value, &jwt.StandardClaims{}, func(t *jwt.Token) (interface{}, error) {
 		return []byte(secret), nil
@@ -129,8 +131,22 @@ func USER(c echo.Context) error {
 	erro := Db.QueryRow("SELECT * FROM users WHERE id = ?", claims.Issuer).Scan(&user.Id, &user.Name, &user.Email, &user.Password)
 
 	if erro != nil {
-        return err
+        return c.String(http.StatusBadRequest, "Not found")
     }
 
 	return c.JSON(http.StatusOK, user)
+}
+
+func Logout(c echo.Context) error {
+    cookie := http.Cookie {
+        Name: "jwt",
+        Value: "",
+        Expires: time.Now().Add(-time.Hour),
+        HttpOnly: true,
+    }
+
+    c.SetCookie(&cookie)
+    return c.JSON(http.StatusOK, echo.Map {
+        "message": "success",
+    })
 }

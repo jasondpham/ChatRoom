@@ -23,6 +23,7 @@ func main() {
 	e.GET("/login", server.GetUser)
 	e.POST("/users", server.Register)
     e.GET("/users", server.USER)
+    e.GET("/logout", server.Logout)
 	e.Logger.Fatal(e.Start(":8080"))
 }
 
